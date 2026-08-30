@@ -1504,5 +1504,24 @@ $('exportBtn').addEventListener('click', runExport);
 $('exportBtnTop').addEventListener('click', runExport);
 
 </script>
+  <script>
+function resizeParentIframe() {
+  if (window.parent !== window) {
+    const height = document.documentElement.scrollHeight;
+    window.parent.postMessage({
+      type: 'gif-frame-bench-height',
+      height: height
+    }, '*');
+  }
+}
+
+window.addEventListener('load', resizeParentIframe);
+
+const resizeObserver = new ResizeObserver(() => {
+  resizeParentIframe();
+});
+
+resizeObserver.observe(document.documentElement);
+</script>
 </body>
 </html>
