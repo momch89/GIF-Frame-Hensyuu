@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ぽよへんかん — 透過PNG → ぷにぷにGIF/APNG/WebP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EAF6F2;
+    --panel: #FFFFFF;
+    --panel-tint: #F3FBF8;
+    --ink: #223138;
+    --ink-soft: #5B6B70;
+    --line: #D6EEE5;
+    --pink: #FF6FA8;
+    --pink-ink: #B23E75;
+    --purple: #8C6FFF;
+    --purple-ink: #5B3FCB;
+    --yellow: #FFC94A;
+    --yellow-ink: #A67300;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Zen Kaku Gothic New', 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
+    padding: 32px 20px 64px;
+  }
+  .wrap{ max-width: 1080px; margin: 0 auto; }
+
+  header{ margin-bottom: 28px; }
+  .logo{
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 900;
+    font-size: clamp(28px, 4vw, 38px);
+    color: var(--ink);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .logo .dot{
+    display:inline-block; width:.42em; height:.42em; border-radius:50%;
+    background: var(--pink); transform: translateY(0.06em);
+  }
+  header p{
+    margin: 8px 0 0;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    font-size: 15px;
+  }
+
+  main{
+    display: grid;
+    grid-template-columns: minmax(280px, 380px) 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 820px){
+    body{ padding: 16px 12px 36px; }
+    header{ margin-bottom: 18px; }
+    main{ grid-template-columns: 1fr; gap: 14px; }
+    .panel{ padding: 16px; border-radius: 16px; }
+    .dropzone{ padding: 20px 12px; }
+    .anchor-note{ padding: 8px 10px; }
+    button.pill, a.download{ min-height: 44px; }
+  }
+  @media (max-width: 420px){
+    .presets{ gap: 6px; }
+    .preset-btn{ padding: 12px 3px 10px; font-size: 12px; }
+    .stage-controls{ align-items: stretch; }
+    .stage-controls .pill{ flex: 1; padding-inline: 10px; }
+  }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 22px;
+  }
+
+  h2{
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 14px;
+  }
+
+  /* --- Dropzone --- */
+  .dropzone{
+    border: 2px dashed #B9E4D6;
+    border-radius: 16px;
+    padding: 26px 16px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--panel-tint);
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .dropzone.drag{ border-color: var(--pink); background: #FFF1F6; }
+  .dropzone p{ margin: 6px 0 0; font-size: 13px; color: var(--ink-soft); }
+  .dropzone .icon{ font-size: 30px; }
+  .dropzone input{ display:none; }
+
+  .file-chip{
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .file-chip button{
+    background: none; border: none; color: var(--pink-ink);
+    font-size: 12px; cursor: pointer; text-decoration: underline;
+    font-family: inherit;
+  }
+
+  /* --- Preset blobs (signature element) --- */
+  .presets{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .preset-btn{
+    border: 2px solid transparent;
+    background: var(--panel-tint);
+    cursor: pointer;
+    padding: 16px 6px 12px;
+    text-align: center;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink);
+    border-radius: 58% 42% 61% 39% / 45% 58% 42% 55%;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .preset-btn .emoji{ display:block; font-size: 22px; margin-bottom: 4px; }
+  .preset-btn:hover{ transform: translateY(-2px) scale(1.03); }
+  .preset-btn.active{ border-color:var(--pink); background:#FFEEF4; color:var(--pink-ink); }
+  .preset-btn[data-preset="poyo"].active{ border-color: var(--pink); background: #FFEEF4; color: var(--pink-ink); }
+  .preset-btn[data-preset="fuwa"].active{ border-color:#00afcc; background:#e5faff; color:#008fa8; }
+  .preset-btn[data-preset="pyon"].active{ border-color:#00885a; background:#e4f5ee; color:#00885a; }
+  .preset-btn[data-preset="nobi"].active{ border-color:#9151B8; background:#f1e8f7; color:#9151B8; }
+  .preset-btn[data-preset="tubu"].active{ border-color:#fcc800; background:#fff7cc; color:#8a6e00; }
+  .preset-btn[data-preset="jellyJump"].active{ border-color:#434da2; background:#e9eaf7; color:#434da2; }
+
+  .preset-desc{ font-size: 12.5px; color: var(--ink-soft); margin: 10px 2px 22px; min-height: 32px; }
+  .phase-settings{ display:none; background:var(--panel-tint); border-radius:12px; padding:12px; margin:-10px 0 18px; }
+  .phase-settings.show{ display:block; }
+  .phase-title{ font-size:12px; font-weight:700; margin-bottom:10px; }
+
+  /* --- Sliders --- */
+  .field{ margin-bottom: 18px; }
+  .field label{
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; font-weight: 500; margin-bottom: 6px;
+  }
+  .field label span.val{ color: var(--pink-ink); font-variant-numeric: tabular-nums; }
+  input[type=range]{
+    width: 100%; -webkit-appearance: none; appearance:none;
+    height: 6px; border-radius: 4px; background: #E4F3ED; outline: none;
+  }
+  .range-control{ display:grid; grid-template-columns: 1fr 86px; gap:10px; align-items:center; }
+  input[type=number]{
+    width:100%; min-height:36px; border:1px solid var(--line); border-radius:9px;
+    padding:5px 7px; color:var(--ink); background:#fff; font:inherit;
+    font-size:13px; text-align:right; font-variant-numeric:tabular-nums;
+  }
+  input[type=text]{
+    width:100%; min-height:42px; border:1px solid var(--line); border-radius:10px;
+    padding:7px 11px; color:var(--ink); background:#fff; font:inherit; font-size:13px;
+  }
+  .filename-row{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px; }
+  .filename-ext{ min-width:54px; font-size:13px; font-weight:700; color:var(--ink-soft); }
+  select{
+    width:100%; min-height:42px; border:1px solid var(--line); border-radius:10px;
+    padding:7px 11px; color:var(--ink); background:#fff; font:inherit; font-size:13px;
+  }
+  .shadow-options{ margin:0 0 18px 26px; padding:12px; background:var(--panel-tint); border-radius:12px; }
+  .shadow-options.off{ opacity:.48; pointer-events:none; }
+  .color-presets{ display:flex; flex-wrap:wrap; gap:8px; margin:7px 0 10px; }
+  .color-dot{ width:30px; height:30px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 1px var(--line); cursor:pointer; }
+  .color-dot.active{ box-shadow:0 0 0 2px var(--purple); }
+  .color-custom{ display:flex; align-items:center; gap:9px; font-size:12px; color:var(--ink-soft); }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--pink); border: 3px solid #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,.25); cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--pink); border: 3px solid #fff; cursor: pointer;
+  }
+
+  details.adv{ margin-top: 4px; }
+  details.adv summary{
+    cursor: pointer; font-size: 13px; font-weight: 500; color: var(--ink-soft);
+    padding: 4px 0; list-style: none;
+  }
+  details.adv summary::-webkit-details-marker{ display:none; }
+  details.adv summary::before{ content: "▸ "; }
+  details.adv[open] summary::before{ content: "▾ "; }
+  details.adv .field{ margin-top: 14px; }
+
+  .row-check{ display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom: 12px; }
+  input[type=color]{ width: 38px; height: 28px; border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+
+  /* --- Preview stage --- */
+  .stage-head{ display:flex; align-items:center; justify-content: space-between; margin-bottom: 6px; gap: 10px; flex-wrap: wrap;}
+  .stage-head .hint{ font-size: 12.5px; color: var(--ink-soft); }
+  .anchor-note{
+    font-size: 12.5px; color: var(--pink-ink); background: #FFF1F6;
+    border: 1px solid #FFD3E4; border-radius: 10px; padding: 8px 12px; margin-bottom: 14px;
+  }
+
+  .canvas-holder{
+    position: relative;
+    background:
+      linear-gradient(45deg, #eee 25%, transparent 25%),
+      linear-gradient(-45deg, #eee 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #eee 75%),
+      linear-gradient(-45deg, transparent 75%, #eee 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: #fbfbfb;
+    border-radius: 16px;
+    overflow: hidden;
+    max-width: 420px;
+    margin: 0 auto;
+    border: 1px solid var(--line);
+  }
+  #stage{ display:block; width: 100%; height: auto; cursor: crosshair; touch-action: none; }
+
+  .stage-controls{
+    display:flex; align-items:center; justify-content:center; gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .edit-modes{ display:flex; gap:8px; width:100%; justify-content:center; }
+  .edit-modes .pill.active{ background:#8C6FFF; color:#fff; }
+  button.pill{
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-weight: 700; font-size: 13px;
+    border: none; border-radius: 999px;
+    padding: 10px 18px; cursor: pointer;
+    background: var(--panel-tint); color: var(--ink);
+    transition: transform .12s ease;
+  }
+  button.pill:hover{ transform: translateY(-1px); }
+  button.pill:disabled{ opacity:.45; cursor: not-allowed; transform:none; }
+  button.pill.primary{ background: var(--pink); color: #fff; }
+  button.pill.primary:hover{ background: var(--pink-ink); }
+
+  .export-block{ margin-top: 22px; border-top: 1px solid var(--line); padding-top: 18px; }
+  .progress-wrap{
+    height: 8px; background: #E4F3ED; border-radius: 4px; overflow:hidden; margin-top: 10px; display:none;
+  }
+  .progress-wrap.show{ display:block; }
+  .progress-bar{ height:100%; width:0%; background: var(--pink); transition: width .1s linear; }
+  .progress-label{ font-size: 12px; color: var(--ink-soft); margin-top: 6px; display:none; }
+  .progress-label.show{ display:block; }
+
+  .result{ margin-top: 16px; display:none; }
+  .result.show{ display:block; }
+  .result img{ max-width: 160px; border-radius: 10px; border: 1px solid var(--line); display:block; margin-bottom: 10px; }
+  a.download{
+    display:inline-block; font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:13px;
+    background: var(--purple); color:#fff; padding: 10px 18px; border-radius: 999px; text-decoration:none;
+  }
+  a.download:hover{ background: var(--purple-ink); }
+
+  .empty-note{ font-size: 13px; color: var(--ink-soft); text-align:center; padding: 40px 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo"><span class="dot"></span>ぽよへんかん</div>
+    <p>透過PNGを1枚アップロードすると、伸縮アニメーション（スクワッシュ&amp;ストレッチ）をかけて、ぷにぷに揺れるループGIF/APNG/WebPに変換します。</p>
+  </header>
+
+  <main>
+    <!-- LEFT: controls -->
+    <section class="panel" id="controlsPanel">
+      <h2>1. 画像をアップロード</h2>
+      <div class="dropzone" id="dropzone">
+        <div class="icon">🖼️</div>
+        <div><strong>クリック</strong> または <strong>ドラッグ&ドロップ</strong></div>
+        <p>PNG・JPEG・WebPなどの画像に対応</p>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+      <div class="file-chip" id="fileChip" style="display:none;">
+        <span id="fileName"></span>
+        <button id="clearFile">削除</button>
+      </div>
+
+      <div style="margin-top:24px;">
+        <h2>2. 揺れかたを選ぶ</h2>
+        <div class="presets">
+          <button class="preset-btn active" data-preset="poyo"><span class="emoji">🍡</span>ぽよぽよ</button>
+          <button class="preset-btn" data-preset="fuwa"><span class="emoji">☁️</span>ふわふわ</button>
+          <button class="preset-btn" data-preset="pyon"><span class="emoji">🐸</span>ぴょんぴょん</button>
+          <button class="preset-btn" data-preset="nobi"><span class="emoji">🫧</span>びよーん</button>
+          <button class="preset-btn" data-preset="tubu"><span class="emoji">🍮</span>ぷるん</button>
+          <button class="preset-btn" data-preset="jellyJump"><span class="emoji">🪼</span>ぷるジャンプ</button>
+        </div>
+        <div class="preset-desc" id="presetDesc">連続した曲線で、なめらかにぽよぽよ揺れます。</div>
+      </div>
+
+      <div class="field">
+        <label>揺れの強さ <span class="val" id="intensityVal">80%</span></label>
+        <div class="range-control"><input type="range" id="intensity" min="0" max="200" value="80"><input type="number" id="intensityNumber" aria-label="揺れの強さの数値" min="0" max="200" value="80"></div>
+      </div>
+
+      <div class="field">
+        <label>キャラクターのサイズ <span class="val" id="charScaleVal">100%</span></label>
+        <div class="range-control"><input type="range" id="charScale" min="40" max="160" value="100"><input type="number" id="charScaleNumber" aria-label="キャラクターサイズの数値" min="40" max="160" value="100"></div>
+      </div>
+
+      <div class="row-check">
+        <input type="checkbox" id="showShadow" checked>
+        <label for="showShadow" style="margin:0;">足元の影を表示する</label>
+      </div>
+      <div class="shadow-options" id="shadowOptions">
+        <div class="field" style="margin:0 0 12px;">
+          <label for="shadowBehavior">影の動き</label>
+          <select id="shadowBehavior"><option value="distance">ジャンプ距離に合わせる</option><option value="distanceDeform">ジャンプ距離＋キャラクター変形に合わせる</option></select>
+        </div>
+        <div class="field" style="margin:0 0 12px;">
+          <label>影の上下位置 <span class="val" id="shadowYVal">+3%</span></label>
+          <div class="range-control"><input type="range" id="shadowY" min="-10" max="20" value="3"><input type="number" id="shadowYNumber" aria-label="影の上下位置" min="-10" max="20" value="3"></div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:5px;">−で上、＋で下へ移動します</div>
+        </div>
+        <label style="font-size:12px;font-weight:500;">影の色</label>
+        <div class="color-presets" id="shadowPresets">
+          <button class="color-dot active" type="button" data-color="#5A5268" aria-label="すみれグレー" title="すみれグレー" style="background:#5A5268"></button>
+          <button class="color-dot" type="button" data-color="#F39AB9" aria-label="いちごミルク" title="いちごミルク" style="background:#F39AB9"></button>
+          <button class="color-dot" type="button" data-color="#A78BFA" aria-label="ラベンダー" title="ラベンダー" style="background:#A78BFA"></button>
+          <button class="color-dot" type="button" data-color="#73CDB1" aria-label="ミント" title="ミント" style="background:#73CDB1"></button>
+          <button class="color-dot" type="button" data-color="#F1B94C" aria-label="はちみつ" title="はちみつ" style="background:#F1B94C"></button>
+        </div>
+        <div class="color-custom"><input type="color" id="shadowColor" value="#5a5268"><label for="shadowColor">自由に色を選ぶ</label></div>
+        <div class="field" style="margin:12px 0 0;">
+          <label>影の透明度 <span class="val" id="shadowOpacityVal">36%</span></label>
+          <div class="range-control"><input type="range" id="shadowOpacity" min="0" max="100" value="36"><input type="number" id="shadowOpacityNumber" aria-label="影の透明度の数値" min="0" max="100" value="36"></div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">GIFでは半透明にならず、透明度をドット密度として表現します。APNG/WebPでは半透明のまま出力されます。</div>
+        </div>
+      </div>
+
+      <details class="adv" style="background:#F7F2FF;border:1px solid #DED6FF;border-radius:12px;padding:8px 12px;margin-bottom:14px;">
+        <summary><strong>🌈おまけ機能🌈</strong></summary>
+        <div class="row-check" style="margin-top:12px;">
+          <input type="checkbox" id="gamingGlow">
+          <label for="gamingGlow" style="margin:0;"><strong>ゲーミングオーラ</strong><br><span style="font-size:11.5px;color:var(--ink-soft);">虹色の光が画像の周囲を回ります</span></label>
+        </div>
+        <div class="row-check">
+          <input type="checkbox" id="gamingHue">
+          <label for="gamingHue" style="margin:0;"><strong>本体もゲーミング</strong><br><span style="font-size:11.5px;color:var(--ink-soft);">画像そのものの色相を派手に回転させます</span></label>
+        </div>
+        <div class="field">
+          <label>色相変化の速度 <span class="val" id="gamingSpeedVal">100%</span></label>
+          <div class="range-control"><input type="range" id="gamingSpeed" min="25" max="400" value="100" step="5"><input type="number" id="gamingSpeedNumber" aria-label="色相変化の速度" min="25" max="400" value="100" step="5"></div>
+        </div>
+        <div class="row-check" style="margin-bottom:2px;">
+          <input type="checkbox" id="gamingShadow">
+          <label for="gamingShadow" style="margin:0;"><strong>足元影もゲーミング</strong><br><span style="font-size:11.5px;color:var(--ink-soft);">足元影に流れる虹色グラデーションを適用します</span></label>
+        </div>
+      </details>
+
+      <details class="adv">
+        <summary>くわしい設定</summary>
+
+        <div class="field">
+          <label>コマ数（フレームレート） <span class="val" id="fpsVal">16 fps</span></label>
+          <div class="range-control"><input type="range" id="fps" min="8" max="30" value="16"><input type="number" id="fpsNumber" aria-label="フレームレートの数値" min="8" max="30" value="16"></div>
+        </div>
+        <div class="field">
+          <label>1周期の長さ <span class="val" id="cycleVal">900ms</span></label>
+          <div class="range-control"><input type="range" id="cycle" min="300" max="3000" value="900" step="10"><input type="number" id="cycleNumber" aria-label="周期の長さの数値" min="300" max="3000" value="900" step="10"></div>
+        </div>
+        <div class="phase-settings" id="phaseSettings">
+          <div class="phase-title">モーションを2段階で調整</div>
+          <div class="field">
+            <label>動き① <span class="val" id="phase1Val">1000ms</span></label>
+            <div class="range-control"><input type="range" id="phase1" min="100" max="1500" value="1000" step="10"><input type="number" id="phase1Number" aria-label="動き1の長さ" min="100" max="1500" value="1000" step="10"></div>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>動き② <span class="val" id="phase2Val">1000ms</span></label>
+            <div class="range-control"><input type="range" id="phase2" min="100" max="1500" value="1000" step="10"><input type="number" id="phase2Number" aria-label="動き2の長さ" min="100" max="1500" value="1000" step="10"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>書き出しサイズ（正方形） <span class="val" id="sizeVal">512px</span></label>
+          <div class="range-control"><input type="range" id="outSize" min="120" max="1024" value="512" step="8"><input type="number" id="outSizeNumber" aria-label="書き出しサイズの数値" min="120" max="1024" value="512" step="8"></div>
+        </div>
+        <div class="row-check">
+          <input type="checkbox" id="transparentBg" checked>
+          <label for="transparentBg" style="margin:0;">背景を透過にする</label>
+        </div>
+        <div class="field" id="bgColorField" style="display:none;">
+          <label>背景色</label>
+          <input type="color" id="bgColor" value="#ffffff">
+        </div>
+      </details>
+    </section>
+
+    <!-- RIGHT: preview / export -->
+    <section class="panel">
+      <div class="stage-head">
+        <h2 style="margin:0;">プレビュー</h2>
+      </div>
+      <div class="anchor-note" id="editHint">「基準点」では画像上をタップしてピンを移動できます。「画像の位置・サイズ」では紫の枠内をドラッグして移動、四隅をドラッグして拡大縮小できます。</div>
+
+      <div class="canvas-holder" id="canvasHolder">
+        <canvas id="stage" width="320" height="320"></canvas>
+      </div>
+      <div class="empty-note" id="emptyNote">画像をアップロードするとここにプレビューが表示されます</div>
+
+      <div class="stage-controls" id="stageControls" style="display:none;">
+        <div class="edit-modes">
+          <button class="pill active" id="anchorMode">基準点</button>
+          <button class="pill" id="frameMode">画像の位置・サイズ</button>
+        </div>
+        <button class="pill" id="playPause">停止</button>
+        <button class="pill" id="resetAnchor">基準点をリセット</button>
+        <button class="pill" id="resetFrame">位置・サイズをリセット</button>
+      </div>
+
+      <div class="export-block" id="exportBlock" style="display:none;">
+        <div class="field">
+          <label for="outputFormat">出力形式</label>
+          <select id="outputFormat"><option value="gif">GIF（透明度をドット密度で表現）</option><option value="apng">APNG（半透明をそのまま保持）</option><option value="webp">WebP（半透明を保持・高画質）</option></select>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">APNGとWebPは半透明を保ったアニメーションで保存します。APNGはアプリによって静止画表示になることがあります。</div>
+        </div>
+        <div class="field" id="gifPaletteField">
+          <label for="gifPaletteMode">GIFの色数</label>
+          <select id="gifPaletteMode">
+            <option value="adaptive255">フレームごとに解析・最大255色</option>
+            <option value="adaptive127">フレームごとに解析・最大127色</option>
+            <option value="adaptive63">フレームごとに解析・最大63色</option>
+            <option value="fixed256">固定256色</option>
+            <option value="fixed128">固定128色</option>
+            <option value="fixed64">固定64色</option>
+          </select>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">解析方式は各フレームに合う色を割り当てます。固定方式は全フレームで同じ色表を使います。</div>
+        </div>
+        <div class="field">
+          <label for="exportFileName">書き出すファイル名</label>
+          <div class="filename-row"><input type="text" id="exportFileName" value="poyo-animation-poyo" maxlength="120" autocomplete="off" spellcheck="false"><span class="filename-ext" id="filenameExt">.gif</span></div>
+        </div>
+        <button class="pill primary" id="exportBtn" style="width:100%;">GIFを書き出す</button>
+        <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="progress-label" id="progressLabel">フレームを生成中…</div>
+        <div class="result" id="result">
+          <img id="resultImg" alt="生成されたアニメーション">
+          <a class="download" id="downloadLink" download="poyo-animation.gif">GIFをダウンロード</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ================= Easing functions =================
+  function easeOutBounce(x){
+    const n1=7.5625, d1=2.75;
+    if (x < 1/d1) return n1*x*x;
+    else if (x < 2/d1) return n1*(x-=1.5/d1)*x+0.75;
+    else if (x < 2.5/d1) return n1*(x-=2.25/d1)*x+0.9375;
+    else return n1*(x-=2.625/d1)*x+0.984375;
+  }
+  function easeOutQuad(x){ return 1-(1-x)*(1-x); }
+  function easeInQuad(x){ return x*x; }
+
+  // ================= State =================
+  const state = {
+    img: null,
+    sourceBaseName: 'poyo-animation',
+    preset: 'poyo',
+    intensity: 0.8,
+    charScale: 1.0,
+    showShadow: true,
+    shadowColor: '#5a5268',
+    shadowOpacity: 0.36,
+    shadowBehavior: 'distance',
+    shadowYOffset: 3,
+    gamingGlow: false,
+    gamingHue: false,
+    gamingSpeed: 1,
+    gamingShadow: false,
+    fps: 16,
+    cycleMs: 900,
+    outSize: 512,
+    anchorXFrac: 0.5,
+    anchorYFrac: 0.9,
+    frameOffsetX: 0,
+    frameOffsetY: 0,
+    frameScale: 1,
+    editMode: 'anchor',
+    phaseDurations: {
+      nobi: [1000,1000],
+      tubu: [1000,1000],
+      jellyJump: [650,1350]
+    },
+    transparentBg: true,
+    bgColor: '#ffffff',
+    playing: true,
+    startTime: null
+  };
+
+  const presetDefaults = {
+    poyo: { anchorX: 0.5, anchorY: 0.9, cycle: 900, desc: '連続した曲線で、なめらかにぽよぽよ揺れます。' },
+    fuwa: { anchorX: 0.5, anchorY: 0.5, cycle: 1400, desc: '重力を感じさせない、ふわっと漂うようなやさしい揺れ。' },
+    pyon: { anchorX: 0.5, anchorY: 0.88, cycle: 900, desc: '地面を蹴って跳ねる、着地でぷにっと潰れるジャンプ揺れ。' },
+    nobi: { anchorX: 0.5, anchorY: 0.92, cycle: 2000, desc: '足元を固定して上へびよーん。小さめにぷるぷるしながら戻ります。' },
+    tubu: { anchorX: 0.5, anchorY: 0.92, cycle: 2000, desc: '足元を固定して大きく潰れ、反動でぷるぷるしながら戻ります。' },
+    jellyJump: { anchorX: 0.5, anchorY: 0.9, cycle: 2000, desc: 'ぴょんと跳ねて着地し、その勢いでゼリーのようにぷるぷるします。' }
+  };
+  const shadowYDefaults = { poyo:3, fuwa:0, pyon:0, nobi:3, tubu:3, jellyJump:3 };
+
+  // ================= DOM refs =================
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const fileChip = document.getElementById('fileChip');
+  const fileName = document.getElementById('fileName');
+  const clearFile = document.getElementById('clearFile');
+
+  const stage = document.getElementById('stage');
+  const ctx = stage.getContext('2d');
+  const gamingLayer = document.createElement('canvas');
+  const gamingLayerCtx = gamingLayer.getContext('2d');
+  const emptyNote = document.getElementById('emptyNote');
+  const canvasHolder = document.getElementById('canvasHolder');
+  const stageControls = document.getElementById('stageControls');
+  const exportBlock = document.getElementById('exportBlock');
+
+  const playPauseBtn = document.getElementById('playPause');
+  const resetAnchorBtn = document.getElementById('resetAnchor');
+  const resetFrameBtn = document.getElementById('resetFrame');
+  const anchorModeBtn = document.getElementById('anchorMode');
+  const frameModeBtn = document.getElementById('frameMode');
+
+  const intensityInput = document.getElementById('intensity');
+  const intensityNumber = document.getElementById('intensityNumber');
+  const charScaleInput = document.getElementById('charScale');
+  const charScaleNumber = document.getElementById('charScaleNumber');
+  const showShadowInput = document.getElementById('showShadow');
+  const shadowOptions = document.getElementById('shadowOptions');
+  const shadowColorInput = document.getElementById('shadowColor');
+  const shadowOpacityInput = document.getElementById('shadowOpacity');
+  const shadowOpacityNumber = document.getElementById('shadowOpacityNumber');
+  const shadowBehaviorInput = document.getElementById('shadowBehavior');
+  const shadowYInput = document.getElementById('shadowY');
+  const shadowYNumber = document.getElementById('shadowYNumber');
+  const gamingGlowInput = document.getElementById('gamingGlow');
+  const gamingHueInput = document.getElementById('gamingHue');
+  const gamingSpeedInput = document.getElementById('gamingSpeed');
+  const gamingSpeedNumber = document.getElementById('gamingSpeedNumber');
+  const gamingShadowInput = document.getElementById('gamingShadow');
+  const fpsInput = document.getElementById('fps');
+  const fpsNumber = document.getElementById('fpsNumber');
+  const cycleInput = document.getElementById('cycle');
+  const cycleNumber = document.getElementById('cycleNumber');
+  const outSizeInput = document.getElementById('outSize');
+  const outSizeNumber = document.getElementById('outSizeNumber');
+  const phaseSettings = document.getElementById('phaseSettings');
+  const phase1Input = document.getElementById('phase1');
+  const phase1Number = document.getElementById('phase1Number');
+  const phase2Input = document.getElementById('phase2');
+  const phase2Number = document.getElementById('phase2Number');
+  const transparentBgInput = document.getElementById('transparentBg');
+  const bgColorField = document.getElementById('bgColorField');
+  const bgColorInput = document.getElementById('bgColor');
+
+  const presetDesc = document.getElementById('presetDesc');
+  const exportBtn = document.getElementById('exportBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar = document.getElementById('progressBar');
+  const progressLabel = document.getElementById('progressLabel');
+  const result = document.getElementById('result');
+  const resultImg = document.getElementById('resultImg');
+  const downloadLink = document.getElementById('downloadLink');
+  const exportFileName = document.getElementById('exportFileName');
+  const filenameExt = document.getElementById('filenameExt');
+  const outputFormat = document.getElementById('outputFormat');
+  const gifPaletteMode = document.getElementById('gifPaletteMode');
+  const gifPaletteField = document.getElementById('gifPaletteField');
+  let currentResultUrl = null;
+  let filenameDirty = false;
+  const motionFileNames={poyo:'poyo',fuwa:'fuwa',pyon:'pyon',nobi:'biyon',tubu:'purun',jellyJump:'prjump'};
+  function updateDefaultFileName(force=false){
+    if(force||!filenameDirty) exportFileName.value=state.sourceBaseName+'-'+motionFileNames[state.preset];
+  }
+  exportFileName.addEventListener('input',()=>{filenameDirty=true;});
+  outputFormat.addEventListener('change',()=>{
+    const format=outputFormat.value;
+    const label=format==='apng'?'APNG':format==='webp'?'WebP':'GIF';
+    exportBtn.textContent=label+'を書き出す';
+    downloadLink.textContent=label+'をダウンロード';
+    filenameExt.textContent=format==='apng'?'.apng':format==='webp'?'.webp':'.gif';
+    gifPaletteField.style.display=format==='gif'?'block':'none';
+  });
+
+  // ================= File handling =================
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault(); dropzone.classList.remove('drag');
+    if(e.dataTransfer.files && e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => {
+    if(e.target.files && e.target.files[0]) loadFile(e.target.files[0]);
+  });
+  clearFile.addEventListener('click', () => {
+    state.img = null;
+    fileInput.value = '';
+    fileChip.style.display = 'none';
+    emptyNote.style.display = 'block';
+    canvasHolder.style.display = 'none';
+    stageControls.style.display = 'none';
+    exportBlock.style.display = 'none';
+    result.classList.remove('show');
+  });
+
+  function loadFile(file){
+    if(!file.type.startsWith('image/')){ alert('画像ファイルを選択してください'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        state.img = img;
+        state.sourceBaseName=file.name.replace(/\.[^.]+$/,'')||'poyo-animation';
+        filenameDirty=false;
+        updateDefaultFileName(true);
+        state.anchorXFrac = presetDefaults[state.preset].anchorX;
+        state.anchorYFrac = presetDefaults[state.preset].anchorY;
+        state.frameOffsetX = 0;
+        state.frameOffsetY = 0;
+        state.frameScale = 1;
+        fileName.textContent = file.name;
+        fileChip.style.display = 'flex';
+        emptyNote.style.display = 'none';
+        canvasHolder.style.display = 'block';
+        stageControls.style.display = 'flex';
+        exportBlock.style.display = 'block';
+        result.classList.remove('show');
+        state.playing = true;
+        playPauseBtn.textContent = '停止';
+        state.startTime = null;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ================= Preset buttons =================
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.preset = btn.dataset.preset;
+      const d = presetDefaults[state.preset];
+      state.anchorXFrac = d.anchorX;
+      state.anchorYFrac = d.anchorY;
+      state.cycleMs = d.cycle;
+      cycleInput.value = d.cycle;
+      cycleNumber.value = d.cycle;
+      cycleVal.textContent = d.cycle + 'ms';
+      presetDesc.textContent = d.desc;
+      state.shadowYOffset=shadowYDefaults[state.preset]||0;
+      shadowYInput.value=shadowYNumber.value=state.shadowYOffset;
+      shadowYVal.textContent=(state.shadowYOffset>0?'+':'')+state.shadowYOffset+'%';
+      updatePhaseControls();
+      updateDefaultFileName();
+      state.startTime = null;
+    });
+  });
+
+  // ================= Sliders =================
+  const intensityVal = document.getElementById('intensityVal');
+  const charScaleVal = document.getElementById('charScaleVal');
+  const fpsVal = document.getElementById('fpsVal');
+  const cycleVal = document.getElementById('cycleVal');
+  const sizeVal = document.getElementById('sizeVal');
+  const shadowOpacityVal = document.getElementById('shadowOpacityVal');
+  const phase1Val = document.getElementById('phase1Val');
+  const phase2Val = document.getElementById('phase2Val');
+  const shadowYVal = document.getElementById('shadowYVal');
+  const gamingSpeedVal = document.getElementById('gamingSpeedVal');
+
+  function bindRangeNumber(range, number, onValue){
+    function apply(raw){
+      const min=Number(range.min), max=Number(range.max), step=Number(range.step)||1;
+      let value=Math.max(min,Math.min(max,Number(raw)));
+      if(!Number.isFinite(value)) value=Number(range.value);
+      value=Math.round(value/step)*step;
+      range.value=String(value); number.value=String(value); onValue(value);
+    }
+    range.addEventListener('input',()=>apply(range.value));
+    number.addEventListener('input',()=>{
+      const value=Number(number.value), min=Number(range.min), max=Number(range.max);
+      if(number.value!=='' && Number.isFinite(value) && value>=min && value<=max){
+        range.value=String(value); onValue(value);
+      }
+    });
+    number.addEventListener('change',()=>apply(number.value));
+  }
+  bindRangeNumber(intensityInput,intensityNumber,value=>{
+    state.intensity=value/100; intensityVal.textContent=value+'%';
+  });
+  bindRangeNumber(charScaleInput,charScaleNumber,value=>{
+    state.charScale=value/100; charScaleVal.textContent=value+'%';
+  });
+  showShadowInput.addEventListener('change', () => {
+    state.showShadow = showShadowInput.checked;
+    shadowOptions.classList.toggle('off', !state.showShadow);
+  });
+  shadowBehaviorInput.addEventListener('change',()=>{ state.shadowBehavior=shadowBehaviorInput.value; });
+  gamingGlowInput.addEventListener('change',()=>{ state.gamingGlow=gamingGlowInput.checked; });
+  gamingHueInput.addEventListener('change',()=>{ state.gamingHue=gamingHueInput.checked; });
+  gamingShadowInput.addEventListener('change',()=>{ state.gamingShadow=gamingShadowInput.checked; });
+  bindRangeNumber(gamingSpeedInput,gamingSpeedNumber,value=>{
+    state.gamingSpeed=value/100; gamingSpeedVal.textContent=value+'%';
+  });
+  bindRangeNumber(shadowYInput,shadowYNumber,value=>{
+    state.shadowYOffset=value;
+    shadowYVal.textContent=(value>0?'+':'')+value+'%';
+  });
+  document.querySelectorAll('#shadowPresets .color-dot').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      state.shadowColor=btn.dataset.color;
+      shadowColorInput.value=btn.dataset.color;
+      document.querySelectorAll('#shadowPresets .color-dot').forEach(b=>b.classList.toggle('active',b===btn));
+    });
+  });
+  shadowColorInput.addEventListener('input',()=>{
+    state.shadowColor=shadowColorInput.value;
+    document.querySelectorAll('#shadowPresets .color-dot').forEach(b=>b.classList.toggle('active',b.dataset.color.toLowerCase()===state.shadowColor.toLowerCase()));
+  });
+  bindRangeNumber(shadowOpacityInput,shadowOpacityNumber,value=>{
+    state.shadowOpacity=value/100; shadowOpacityVal.textContent=value+'%';
+  });
+  bindRangeNumber(fpsInput,fpsNumber,value=>{
+    state.fps=value; fpsVal.textContent=value+' fps';
+  });
+  bindRangeNumber(cycleInput,cycleNumber,value=>{
+    if(state.phaseDurations[state.preset]){
+      const old=state.phaseDurations[state.preset], oldTotal=old[0]+old[1];
+      const first=Math.max(100,Math.round((value*old[0]/oldTotal)/10)*10);
+      state.phaseDurations[state.preset]=[first,Math.max(100,value-first)];
+      updatePhaseControls(false);
+    }
+    state.cycleMs=value; cycleVal.textContent=value+'ms';
+    state.startTime = null;
+  });
+  bindRangeNumber(outSizeInput,outSizeNumber,value=>{
+    state.outSize=value; sizeVal.textContent=value+'px';
+  });
+  function updatePhaseControls(syncCycle=true){
+    const values=state.phaseDurations[state.preset];
+    phaseSettings.classList.toggle('show',!!values);
+    if(!values) return;
+    phase1Input.value=phase1Number.value=values[0];
+    phase2Input.value=phase2Number.value=values[1];
+    phase1Val.textContent=values[0]+'ms'; phase2Val.textContent=values[1]+'ms';
+    if(syncCycle){
+      const total=values[0]+values[1];
+      state.cycleMs=total; cycleInput.value=cycleNumber.value=total; cycleVal.textContent=total+'ms';
+    }
+  }
+  function setPhaseDuration(index,value){
+    const values=state.phaseDurations[state.preset]; if(!values) return;
+    values[index]=value;
+    phase1Val.textContent=values[0]+'ms'; phase2Val.textContent=values[1]+'ms';
+    const total=values[0]+values[1];
+    state.cycleMs=total; cycleInput.value=cycleNumber.value=total; cycleVal.textContent=total+'ms';
+    state.startTime=null;
+  }
+  bindRangeNumber(phase1Input,phase1Number,value=>setPhaseDuration(0,value));
+  bindRangeNumber(phase2Input,phase2Number,value=>setPhaseDuration(1,value));
+  transparentBgInput.addEventListener('change', () => {
+    state.transparentBg = transparentBgInput.checked;
+    bgColorField.style.display = state.transparentBg ? 'none' : 'block';
+  });
+  bgColorInput.addEventListener('input', () => { state.bgColor = bgColorInput.value; });
+
+  playPauseBtn.addEventListener('click', () => {
+    state.playing = !state.playing;
+    playPauseBtn.textContent = state.playing ? '停止' : '再生';
+    if(state.playing) state.startTime = null;
+  });
+  resetAnchorBtn.addEventListener('click', () => {
+    state.anchorXFrac = presetDefaults[state.preset].anchorX;
+    state.anchorYFrac = presetDefaults[state.preset].anchorY;
+    if(!state.playing) draw(ctx, stage.width, 0, true, null);
+  });
+  resetFrameBtn.addEventListener('click', () => {
+    state.frameOffsetX = 0;
+    state.frameOffsetY = 0;
+    state.frameScale = 1;
+    if(state.img){
+      state.playing = false;
+      playPauseBtn.textContent = '再生';
+      draw(ctx, stage.width, 0, true, null);
+    }
+  });
+  function setEditMode(mode){
+    state.editMode = mode;
+    anchorModeBtn.classList.toggle('active', mode === 'anchor');
+    frameModeBtn.classList.toggle('active', mode === 'frame');
+    if(state.img){
+      state.playing = false;
+      playPauseBtn.textContent = '再生';
+      draw(ctx, stage.width, 0, true, null);
+    }
+  }
+  anchorModeBtn.addEventListener('click', () => setEditMode('anchor'));
+  frameModeBtn.addEventListener('click', () => setEditMode('frame'));
+
+  // ================= Anchor point interaction =================
+  // Neutral (rest-pose, t=0) layout of the image within the canvas.
+  function getNeutralRect(size){
+    const img = state.img;
+    const maxBox = size * 0.5 * state.charScale * state.frameScale;
+    const scale = Math.min(maxBox / img.width, maxBox / img.height);
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+    const groundY = size * (0.72 + state.frameOffsetY);
+    // The image placement must not depend on the anchor. Otherwise changing the
+    // anchor moves the image and makes the pin appear stuck in one place.
+    const topY = groundY - drawH * 0.9;
+    const leftX = size * (0.5 + state.frameOffsetX) - drawW / 2;
+    return { drawW, drawH, groundY, topY, leftX };
+  }
+
+  function canvasPointFromEvent(e){
+    const rect = stage.getBoundingClientRect();
+    const scaleX = stage.width / rect.width;
+    const scaleY = stage.height / rect.height;
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY
+    };
+  }
+
+  function setAnchorFromPoint(px, py){
+    // Anchor is computed against the NEUTRAL rest pose (t=0), so we pause
+    // playback while editing — otherwise the character is mid-animation
+    // and the click point would not correspond to where the pin ends up.
+    const { drawH, topY, leftX, drawW } = getNeutralRect(stage.width);
+    state.anchorXFrac = Math.max(0, Math.min(1, (px - leftX) / drawW));
+    state.anchorYFrac = Math.max(0, Math.min(1, (py - topY) / drawH));
+  }
+
+  let dragging = false;
+  let dragAction = null;
+  let dragStart = null;
+  let snapGuideX = false;
+  let snapGuideY = false;
+  function frameHitAction(px, py){
+    const r = getNeutralRect(stage.width);
+    const handles = [
+      {x:r.leftX,y:r.topY}, {x:r.leftX+r.drawW,y:r.topY},
+      {x:r.leftX,y:r.topY+r.drawH}, {x:r.leftX+r.drawW,y:r.topY+r.drawH}
+    ];
+    for(let i=0;i<handles.length;i++){
+      if(Math.hypot(px-handles[i].x, py-handles[i].y) <= 18) return 'resize';
+    }
+    if(px>=r.leftX && px<=r.leftX+r.drawW && py>=r.topY && py<=r.topY+r.drawH) return 'move';
+    return null;
+  }
+  stage.addEventListener('pointerdown', e => {
+    if(!state.img) return;
+    e.preventDefault();
+    stage.setPointerCapture(e.pointerId);
+    dragging = true;
+    state.playing = false;
+    playPauseBtn.textContent = '再生';
+    const p = canvasPointFromEvent(e);
+    dragAction = state.editMode === 'anchor' ? 'anchor' : frameHitAction(p.x, p.y);
+    dragStart = {
+      x:p.x, y:p.y, offsetX:state.frameOffsetX, offsetY:state.frameOffsetY,
+      scale:state.frameScale, rect:getNeutralRect(stage.width)
+    };
+    if(dragAction === 'anchor') setAnchorFromPoint(p.x, p.y);
+    draw(ctx, stage.width, 0, true, null);
+  });
+  stage.addEventListener('pointermove', e => {
+    if(!dragging || !state.img) return;
+    const p = canvasPointFromEvent(e);
+    if(dragAction === 'anchor'){
+      setAnchorFromPoint(p.x, p.y);
+    } else if(dragAction === 'move'){
+      state.frameOffsetX = dragStart.offsetX + (p.x-dragStart.x)/stage.width;
+      state.frameOffsetY = dragStart.offsetY + (p.y-dragStart.y)/stage.height;
+      const movedRect=getNeutralRect(stage.width);
+      const centerX=movedRect.leftX+movedRect.drawW/2;
+      const centerY=movedRect.topY+movedRect.drawH/2;
+      const snapDistance=Math.max(6,stage.width*0.022);
+      const wasSnapX=snapGuideX, wasSnapY=snapGuideY;
+      snapGuideX=Math.abs(centerX-stage.width/2)<=snapDistance;
+      snapGuideY=Math.abs(centerY-stage.height/2)<=snapDistance;
+      if(snapGuideX) state.frameOffsetX=0;
+      if(snapGuideY) state.frameOffsetY=0.5-0.72+0.4*movedRect.drawH/stage.height;
+      if((snapGuideX&&!wasSnapX)||(snapGuideY&&!wasSnapY)){
+        if(navigator.vibrate) navigator.vibrate(8);
+      }
+    } else if(dragAction === 'resize'){
+      const centerX = dragStart.rect.leftX + dragStart.rect.drawW/2;
+      const centerY = dragStart.rect.topY + dragStart.rect.drawH/2;
+      const startDist = Math.hypot(dragStart.x-centerX, dragStart.y-centerY);
+      const nowDist = Math.hypot(p.x-centerX, p.y-centerY);
+      state.frameScale = Math.max(0.25, Math.min(3, dragStart.scale * nowDist/Math.max(1,startDist)));
+    }
+    draw(ctx, stage.width, 0, true, null);
+  });
+  function stopDragging(e){
+    dragging = false;
+    dragAction = null;
+    snapGuideX = false;
+    snapGuideY = false;
+    if(e && stage.hasPointerCapture && stage.hasPointerCapture(e.pointerId)){
+      stage.releasePointerCapture(e.pointerId);
+    }
+  }
+  stage.addEventListener('pointerup', stopDragging);
+  stage.addEventListener('pointercancel', stopDragging);
+
+  // ================= Animation transform =================
+  function smoothValue(t, keys){
+    for(let i=0;i<keys.length-1;i++){
+      const a=keys[i], b=keys[i+1];
+      if(t<=b[0]){
+        let u=(t-a[0])/(b[0]-a[0]);
+        u=Math.max(0,Math.min(1,u));
+        u=u*u*(3-2*u);
+        return a[1]+(b[1]-a[1])*u;
+      }
+    }
+    return keys[keys.length-1][1];
+  }
+  function computeTransform(preset, t, intensity, size){
+    let sx=1, sy=1, ty=0, rot=0;
+    const durations=state.phaseDurations[preset];
+    const split=durations?durations[0]/(durations[0]+durations[1]):0.5;
+    const smooth01=u=>u*u*(3-2*u);
+    if(preset === 'poyo'){
+      const wave=Math.sin(2*Math.PI*t);
+      const softWave=Math.sin(4*Math.PI*t+0.55);
+      sy=1+intensity*(0.105*wave+0.022*softWave);
+      sx=1-intensity*(0.078*wave+0.016*softWave);
+    } else if(preset === 'fuwa'){
+      const s1 = Math.sin(2*Math.PI*t);
+      ty = -0.07*intensity*size*s1;
+      rot = 4*intensity*Math.sin(2*Math.PI*t + Math.PI/2)*0.6;
+      sy = 1 + 0.04*intensity*s1;
+      sx = 1 - 0.03*intensity*s1;
+    } else if(preset === 'pyon'){
+      let u, ampH = 0.24*intensity*size;
+      if(t < 0.5){ u = t/0.5; ty = -ampH*easeOutQuad(u); }
+      else { u = (t-0.5)/0.5; ty = -ampH*(1-easeInQuad(u)); }
+      const heightRatio = ampH > 0 ? Math.min(1, Math.abs(ty)/ampH) : 0;
+      sy = 1 + (-0.28 + 0.46*heightRatio)*intensity;
+      sx = 1 + (0.22 - 0.34*heightRatio)*intensity;
+      const landWindow = 0.12;
+      let wob = 0;
+      if(t < landWindow){ const tt = t/landWindow; wob = (1-easeOutBounce(tt))*tt; }
+      else if(t > 1-landWindow){ const tt = (t-(1-landWindow))/landWindow; wob = easeOutBounce(tt)*(1-tt); }
+      sy += 0.05*intensity*wob;
+      sx -= 0.04*intensity*wob;
+    } else if(preset === 'nobi'){
+      let raw;
+      if(t<split){
+        const u=smooth01(t/split); raw=1+0.48*u;
+      }else{
+        const u=(t-split)/(1-split), settle=Math.min(1,u/0.88), envelope=1-smooth01(settle);
+        raw=1+0.48*envelope*Math.cos(7*Math.PI*settle);
+      }
+      sy=1+(raw-1)*intensity;
+      sx=1-(raw-1)*0.44*intensity;
+    } else if(preset === 'tubu'){
+      let raw;
+      if(t<split){
+        const u=smooth01(t/split); raw=1-0.45*u;
+      }else{
+        const u=(t-split)/(1-split), settle=Math.min(1,u/0.88), envelope=1-smooth01(settle);
+        raw=1-0.45*envelope*Math.cos(7*Math.PI*settle);
+      }
+      sy=1+(raw-1)*intensity;
+      sx=1-(raw-1)*0.52*intensity;
+    } else if(preset === 'jellyJump'){
+      let rawS;
+      if(t<split){
+        const u=t/split;
+        if(u<0.12){
+          rawS=1-0.12*smooth01(u/0.12);
+        }else if(u<0.82){
+          const q=(u-0.12)/0.70;
+          if(q<0.5){
+            ty=-0.28*size*intensity*easeOutQuad(q*2);
+          }else{
+            ty=-0.28*size*intensity*(1-easeInQuad((q-0.5)*2));
+          }
+          rawS=q<0.20
+            ? 0.88+0.22*smooth01(q/0.20)
+            : 1.10-0.10*smooth01((q-0.20)/0.80);
+        }else{
+          rawS=1-0.28*smooth01((u-0.82)/0.18);
+        }
+      }else{
+        const u=(t-split)/(1-split), settle=Math.min(1,u/0.88), envelope=1-smooth01(settle);
+        rawS=1-0.28*envelope*Math.cos(7*Math.PI*settle);
+      }
+      sy=1+(rawS-1)*intensity;
+      sx=1-(rawS-1)*0.55*intensity;
+    }
+    return { sx, sy, ty, rot };
+  }
+
+  function draw(context, size, t, editMode, bgFillColor){
+    context.clearRect(0, 0, size, size);
+    if(bgFillColor){
+      context.fillStyle = bgFillColor;
+      context.fillRect(0, 0, size, size);
+    }
+    if(!state.img) return;
+    const img = state.img;
+    const { drawW, drawH, groundY, leftX, topY } = getNeutralRect(size);
+    const anchorX = drawW * state.anchorXFrac;
+    const anchorY = drawH * state.anchorYFrac;
+    const pivotX = leftX + anchorX;
+    const pivotY = topY + anchorY;
+    const { sx, sy, ty, rot } = computeTransform(state.preset, t, state.intensity, size);
+    const gamingHue=(t*360*state.gamingSpeed)%360;
+
+    if(state.showShadow){
+      const distanceScale = Math.max(0.35, 1 - Math.min(1, Math.abs(ty)/(size*0.3)));
+      const followDeform = state.shadowBehavior==='distanceDeform';
+      const deformX = followDeform ? Math.max(0.35,sx) : 1;
+      const deformY = followDeform ? Math.max(0.6,Math.min(1.5,1+(1-sy)*0.6)) : 1;
+      context.save();
+      context.globalAlpha = state.shadowOpacity * distanceScale;
+      const shadowY=groundY+4+(state.preset==='fuwa'?drawH*0.16:0)+size*state.shadowYOffset/100;
+      const shadowRadiusX=(drawW*0.34)*distanceScale*deformX;
+      if(state.gamingShadow){
+        const gradient=context.createLinearGradient(leftX+drawW/2-shadowRadiusX,shadowY,leftX+drawW/2+shadowRadiusX,shadowY);
+        for(let i=0;i<=6;i++) gradient.addColorStop(i/6,`hsl(${(gamingHue+i*60)%360}, 100%, 55%)`);
+        context.fillStyle=gradient;
+        context.shadowColor=`hsl(${gamingHue}, 100%, 60%)`;
+        context.shadowBlur=Math.max(4,size*0.018);
+      }else{
+        context.fillStyle = state.shadowColor;
+      }
+      context.beginPath();
+      context.ellipse(leftX + drawW/2, shadowY, shadowRadiusX, (drawW*0.10)*distanceScale*deformY, 0, 0, Math.PI*2);
+      context.fill();
+      context.restore();
+    }
+
+    context.save();
+    context.translate(pivotX, pivotY + ty);
+    context.rotate(rot * Math.PI/180);
+    context.scale(sx, sy);
+    let renderedImage=img;
+    if(state.gamingHue){
+      const layerW=Math.max(1,Math.ceil(drawW)), layerH=Math.max(1,Math.ceil(drawH));
+      if(gamingLayer.width!==layerW||gamingLayer.height!==layerH){gamingLayer.width=layerW;gamingLayer.height=layerH;}
+      gamingLayerCtx.clearRect(0,0,layerW,layerH);
+      gamingLayerCtx.globalAlpha=1;
+      gamingLayerCtx.globalCompositeOperation='source-over';
+      gamingLayerCtx.drawImage(img,0,0,layerW,layerH);
+      const pixels=gamingLayerCtx.getImageData(0,0,layerW,layerH);
+      const data=pixels.data, angle=gamingHue*Math.PI/180, cos=Math.cos(angle), sin=Math.sin(angle);
+      const m00=.213+cos*.787-sin*.213, m01=.715-cos*.715-sin*.715, m02=.072-cos*.072+sin*.928;
+      const m10=.213-cos*.213+sin*.143, m11=.715+cos*.285+sin*.140, m12=.072-cos*.072-sin*.283;
+      const m20=.213-cos*.213-sin*.787, m21=.715-cos*.715+sin*.715, m22=.072+cos*.928+sin*.072;
+      for(let i=0;i<data.length;i+=4){
+        if(data[i+3]===0) continue;
+        const r=data[i],g=data[i+1],b=data[i+2];
+        data[i]=Math.max(0,Math.min(255,m00*r+m01*g+m02*b));
+        data[i+1]=Math.max(0,Math.min(255,m10*r+m11*g+m12*b));
+        data[i+2]=Math.max(0,Math.min(255,m20*r+m21*g+m22*b));
+      }
+      gamingLayerCtx.putImageData(pixels,0,0);
+      renderedImage=gamingLayer;
+    }
+    if(state.gamingGlow){
+      const baseHue=gamingHue;
+      for(let i=0;i<6;i++){
+        const angle=i*Math.PI/3;
+        context.save();
+        context.globalAlpha=0.72;
+        context.shadowColor=`hsl(${(baseHue+i*60)%360} 100% 58%)`;
+        context.shadowBlur=Math.max(8,size*0.055);
+        context.shadowOffsetX=Math.cos(angle)*size*0.014;
+        context.shadowOffsetY=Math.sin(angle)*size*0.014;
+        context.drawImage(renderedImage, -anchorX, -anchorY, drawW, drawH);
+        context.restore();
+      }
+    }
+    context.drawImage(renderedImage, -anchorX, -anchorY, drawW, drawH);
+    context.restore();
+
+    if(editMode){
+      context.save();
+      if(state.editMode==='frame'&&(snapGuideX||snapGuideY)){
+        context.setLineDash([3,3]);
+        context.strokeStyle='rgba(0,175,204,0.9)';
+        context.lineWidth=1.5;
+        if(snapGuideX){context.beginPath();context.moveTo(size/2,0);context.lineTo(size/2,size);context.stroke();}
+        if(snapGuideY){context.beginPath();context.moveTo(0,size/2);context.lineTo(size,size/2);context.stroke();}
+      }
+      context.setLineDash([4,4]);
+      context.strokeStyle = 'rgba(140,111,255,0.6)';
+      context.lineWidth = 1.5;
+      context.strokeRect(leftX, topY, drawW, drawH);
+      context.setLineDash([]);
+      if(state.editMode === 'frame'){
+        [[leftX,topY],[leftX+drawW,topY],[leftX,topY+drawH],[leftX+drawW,topY+drawH]].forEach(([x,y]) => {
+          context.fillStyle = '#8C6FFF';
+          context.fillRect(x-5,y-5,10,10);
+          context.strokeStyle = '#fff';
+          context.lineWidth = 2;
+          context.strokeRect(x-5,y-5,10,10);
+        });
+      }
+      // anchor pin (always sits exactly on the anchor point in the static pose)
+      context.beginPath();
+      context.moveTo(pivotX, pivotY - 16);
+      context.lineTo(pivotX, pivotY);
+      context.strokeStyle = '#FF6FA8';
+      context.lineWidth = 2;
+      context.stroke();
+      context.beginPath();
+      context.arc(pivotX, pivotY - 16, 6, 0, Math.PI*2);
+      context.fillStyle = '#FF6FA8';
+      context.fill();
+      context.strokeStyle = '#fff';
+      context.lineWidth = 2;
+      context.stroke();
+      context.restore();
+    }
+  }
+
+  // ================= Preview loop =================
+  function loop(now){
+    if(state.img && state.playing){
+      if(state.startTime === null) state.startTime = now;
+      const t = ((now - state.startTime) / state.cycleMs) % 1;
+      draw(ctx, stage.width, t, false, null);
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ================= Self-contained GIF encoder (no CDN, no worker) =================
+  function lzwEncode(minCodeSize, pixels){
+    const clearCode = 1 << minCodeSize;
+    const eoiCode = clearCode + 1;
+    // A deliberately conservative GIF-LZW stream. Clearing every 250 source
+    // symbols keeps the code width at 9 bits, avoiding the dictionary-width
+    // boundary bug that produced corrupt GIF data in the previous encoder.
+    const codeSize = minCodeSize + 1;
+    const bytesOut = [];
+    let bitBuffer = 0, bitCount = 0;
+    function emit(code){
+      bitBuffer |= (code << bitCount);
+      bitCount += codeSize;
+      while(bitCount >= 8){
+        bytesOut.push(bitBuffer & 0xFF);
+        bitBuffer >>= 8;
+        bitCount -= 8;
+      }
+    }
+    for(let i=0;i<pixels.length;i++){
+      if(i % 250 === 0) emit(clearCode);
+      emit(pixels[i]);
+    }
+    emit(eoiCode);
+    if(bitCount > 0) bytesOut.push(bitBuffer & 0xFF);
+    return bytesOut;
+  }
+  function subBlocks(bytes){
+    const out = [];
+    let i = 0;
+    while(i < bytes.length){
+      const end = Math.min(i+255, bytes.length);
+      out.push(end - i);
+      for(let j=i;j<end;j++) out.push(bytes[j]);
+      i = end;
+    }
+    out.push(0);
+    return out;
+  }
+  function u16le(n){ return [n & 0xFF, (n>>8) & 0xFF]; }
+
+  function GifEncoder(width, height){
+    this.width = width; this.height = height;
+    this.bytes = [];
+    const push = s => { for(let i=0;i<s.length;i++) this.bytes.push(s.charCodeAt(i)); };
+    push('GIF89a');
+    this.bytes.push(...u16le(width), ...u16le(height));
+    this.bytes.push(0x70, 0x00, 0x00);
+    this.bytes.push(0x21, 0xFF, 0x0B);
+    push('NETSCAPE2.0');
+    this.bytes.push(0x03, 0x01, 0x00, 0x00, 0x00);
+  }
+  GifEncoder.prototype.addFrame = function(indices, palette256, delayCs, transparentIndex){
+    const hasTrans = transparentIndex !== null && transparentIndex !== undefined;
+    const gcePacked = (2 << 2) | (hasTrans ? 1 : 0);
+    this.bytes.push(0x21, 0xF9, 0x04, gcePacked, ...u16le(delayCs), hasTrans ? transparentIndex : 0, 0x00);
+    this.bytes.push(0x2C, ...u16le(0), ...u16le(0), ...u16le(this.width), ...u16le(this.height));
+    this.bytes.push(0x80 | 0x07);
+    for(let i=0;i<256;i++){
+      const c = palette256[i] || [0,0,0];
+      this.bytes.push(c[0], c[1], c[2]);
+    }
+    this.bytes.push(8);
+    const lzwBytes = lzwEncode(8, indices);
+    const blocks = subBlocks(lzwBytes);
+    for(let i=0;i<blocks.length;i++) this.bytes.push(blocks[i]);
+  };
+  GifEncoder.prototype.finish = function(){
+    this.bytes.push(0x3B);
+    return new Blob([Uint8Array.from(this.bytes)], { type: 'image/gif' });
+  };
+
+  const TRANSPARENT_INDEX = 255;
+
+  const ALPHA_DITHER_4X4 = [
+    0, 8, 2, 10,
+    12, 4, 14, 6,
+    3, 11, 1, 9,
+    15, 7, 13, 5
+  ];
+
+  function isTransparentGifPixel(alpha,index,width,useTransparency){
+    if(!useTransparency) return false;
+    const x=index%width, y=Math.floor(index/width);
+    const threshold=(ALPHA_DITHER_4X4[(y&3)*4+(x&3)]+0.5)*16;
+    return alpha<threshold;
+  }
+
+  function adaptivePalette(imageData,useTransparency,maxColors){
+    const { data, width, height } = imageData;
+    const histogram=new Map();
+    for(let p=0,i=0;p<data.length;p+=4,i++){
+      if(isTransparentGifPixel(data[p+3],i,width,useTransparency)) continue;
+      const key=(data[p]>>3)<<10|(data[p+1]>>3)<<5|(data[p+2]>>3);
+      const item=histogram.get(key);
+      if(item){item[0]+=data[p];item[1]+=data[p+1];item[2]+=data[p+2];item[3]++;}
+      else histogram.set(key,[data[p],data[p+1],data[p+2],1]);
+    }
+    let entries=[...histogram.values()].map(v=>[v[0]/v[3],v[1]/v[3],v[2]/v[3],v[3]]);
+    if(!entries.length) entries=[[0,0,0,1]];
+    let boxes=[entries];
+    function stats(box){
+      let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0,count=0;
+      for(const e of box){minR=Math.min(minR,e[0]);maxR=Math.max(maxR,e[0]);minG=Math.min(minG,e[1]);maxG=Math.max(maxG,e[1]);minB=Math.min(minB,e[2]);maxB=Math.max(maxB,e[2]);count+=e[3];}
+      const ranges=[maxR-minR,maxG-minG,maxB-minB], channel=ranges.indexOf(Math.max(...ranges));
+      return {channel,count,score:Math.max(...ranges)*Math.sqrt(count)};
+    }
+    while(boxes.length<maxColors){
+      let best=-1,bestScore=-1;
+      for(let i=0;i<boxes.length;i++) if(boxes[i].length>1){const score=stats(boxes[i]).score;if(score>bestScore){bestScore=score;best=i;}}
+      if(best<0) break;
+      const box=boxes.splice(best,1)[0], info=stats(box);
+      box.sort((a,b)=>a[info.channel]-b[info.channel]);
+      const half=info.count/2;let sum=0,split=1;
+      for(let i=0;i<box.length-1;i++){sum+=box[i][3];if(sum>=half){split=i+1;break;}}
+      boxes.push(box.slice(0,split),box.slice(split));
+    }
+    const palette=boxes.map(box=>{
+      let r=0,g=0,b=0,count=0;
+      for(const e of box){r+=e[0]*e[3];g+=e[1]*e[3];b+=e[2]*e[3];count+=e[3];}
+      return [Math.round(r/count),Math.round(g/count),Math.round(b/count)];
+    });
+    while(palette.length<256) palette.push([0,0,0]);
+    return palette;
+  }
+
+  function fixedPalette(totalColors){
+    const opaqueColors=Math.max(1,totalColors-1), palette=[];
+    const levels=Math.max(2,Math.floor(Math.cbrt(opaqueColors)));
+    for(let r=0;r<levels&&palette.length<opaqueColors;r++){
+      for(let g=0;g<levels&&palette.length<opaqueColors;g++){
+        for(let b=0;b<levels&&palette.length<opaqueColors;b++){
+          palette.push([
+            Math.round(r*255/(levels-1)),
+            Math.round(g*255/(levels-1)),
+            Math.round(b*255/(levels-1))
+          ]);
+        }
+      }
+    }
+    const remaining=opaqueColors-palette.length;
+    for(let i=0;i<remaining;i++){
+      const v=remaining===1?128:Math.round(i*255/(remaining-1));
+      palette.push([v,v,v]);
+    }
+    while(palette.length<256) palette.push([0,0,0]);
+    return palette;
+  }
+
+  const fixedPalettes={
+    fixed256:fixedPalette(256),
+    fixed128:fixedPalette(128),
+    fixed64:fixedPalette(64)
+  };
+
+  function imageDataToIndexedFrame(imageData, useTransparency, paletteMode){
+    const { data, width, height } = imageData;
+    const adaptiveMatch=/^adaptive(255|127|63)$/.exec(paletteMode);
+    const colorCount=adaptiveMatch?Number(adaptiveMatch[1]):Math.max(1,Number(paletteMode.replace('fixed',''))-1);
+    const palette=adaptiveMatch?adaptivePalette(imageData,useTransparency,colorCount):fixedPalettes[paletteMode];
+    const indices = new Uint8Array(width*height);
+    const cache=new Map();
+    for(let p=0, i=0; p<data.length; p+=4, i++){
+      const a = data[p+3];
+      if(isTransparentGifPixel(a,i,width,useTransparency)){
+        indices[i] = TRANSPARENT_INDEX;
+      } else {
+        const key=(data[p]>>3)<<10|(data[p+1]>>3)<<5|(data[p+2]>>3);
+        let best=cache.get(key);
+        if(best===undefined){
+          let distance=Infinity;best=0;
+          for(let c=0;c<colorCount;c++){
+            const color=palette[c],dr=data[p]-color[0],dg=data[p+1]-color[1],db=data[p+2]-color[2];
+            const d=dr*dr*2+dg*dg*4+db*db;
+            if(d<distance){distance=d;best=c;}
+          }
+          cache.set(key,best);
+        }
+        indices[i]=best;
+      }
+    }
+    return {indices,palette};
+  }
+
+  function yieldToUI(){
+    return new Promise(resolve => requestAnimationFrame(() => resolve()));
+  }
+
+  // ================= APNG encoder (keeps full RGBA alpha) =================
+  const PNG_SIGNATURE = new Uint8Array([137,80,78,71,13,10,26,10]);
+  let crcTable = null;
+  function crc32(bytes){
+    if(!crcTable){
+      crcTable = new Uint32Array(256);
+      for(let n=0;n<256;n++){
+        let c=n;
+        for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);
+        crcTable[n]=c>>>0;
+      }
+    }
+    let c=0xFFFFFFFF;
+    for(const b of bytes) c=crcTable[(c^b)&255]^(c>>>8);
+    return (c^0xFFFFFFFF)>>>0;
+  }
+  function concatBytes(parts){
+    const length=parts.reduce((n,p)=>n+p.length,0), out=new Uint8Array(length);
+    let offset=0; for(const p of parts){out.set(p,offset);offset+=p.length;} return out;
+  }
+  function pngChunk(type, data){
+    const typeBytes=new TextEncoder().encode(type), out=new Uint8Array(12+data.length), view=new DataView(out.buffer);
+    view.setUint32(0,data.length); out.set(typeBytes,4); out.set(data,8);
+    view.setUint32(8+data.length,crc32(concatBytes([typeBytes,data]))); return out;
+  }
+  function u32Data(...values){
+    const out=new Uint8Array(values.length*4), view=new DataView(out.buffer);
+    values.forEach((v,i)=>view.setUint32(i*4,v)); return out;
+  }
+  function parsePng(bytes){
+    let offset=8, ihdr=null; const idats=[];
+    while(offset+12<=bytes.length){
+      const view=new DataView(bytes.buffer,bytes.byteOffset+offset), length=view.getUint32(0);
+      const type=String.fromCharCode(...bytes.slice(offset+4,offset+8));
+      const data=bytes.slice(offset+8,offset+8+length);
+      if(type==='IHDR') ihdr=data;
+      if(type==='IDAT') idats.push(data);
+      offset+=12+length;
+      if(type==='IEND') break;
+    }
+    if(!ihdr||!idats.length) throw new Error('PNGフレームを読み取れませんでした');
+    return {ihdr,idats};
+  }
+  function canvasToPngBytes(canvas){
+    return new Promise((resolve,reject)=>canvas.toBlob(async blob=>{
+      if(!blob){reject(new Error('PNGフレームを生成できませんでした'));return;}
+      resolve(new Uint8Array(await blob.arrayBuffer()));
+    },'image/png'));
+  }
+  async function encodeApng(canvas, context, size, totalFrames, delayMs, fillColor){
+    const frames=[];
+    for(let i=0;i<totalFrames;i++){
+      draw(context,size,i/totalFrames,false,fillColor);
+      frames.push(parsePng(await canvasToPngBytes(canvas)));
+      progressBar.style.width=Math.round(((i+1)/totalFrames)*100)+'%';
+      progressLabel.textContent=`APNGフレームを生成中… (${i+1}/${totalFrames})`;
+      if(i%2===0) await yieldToUI();
+    }
+    const parts=[PNG_SIGNATURE,pngChunk('IHDR',frames[0].ihdr),pngChunk('acTL',u32Data(totalFrames,0))];
+    let sequence=0;
+    for(let i=0;i<frames.length;i++){
+      const fc=new Uint8Array(26), view=new DataView(fc.buffer);
+      view.setUint32(0,sequence++); view.setUint32(4,size); view.setUint32(8,size);
+      view.setUint32(12,0); view.setUint32(16,0);
+      view.setUint16(20,Math.max(1,Math.round(delayMs))); view.setUint16(22,1000);
+      fc[24]=0; fc[25]=0;
+      parts.push(pngChunk('fcTL',fc));
+      for(const idat of frames[i].idats){
+        if(i===0){
+          parts.push(pngChunk('IDAT',idat));
+        }else{
+          parts.push(pngChunk('fdAT',concatBytes([u32Data(sequence++),idat])));
+        }
+      }
+    }
+    parts.push(pngChunk('IEND',new Uint8Array(0)));
+    return new Blob(parts,{type:'image/apng'});
+  }
+
+  // ================= Animated WebP muxer (keeps full alpha) =================
+  function ascii4(text){ return new TextEncoder().encode(text); }
+  function u24le(value){ return new Uint8Array([value&255,(value>>>8)&255,(value>>>16)&255]); }
+  function webpChunk(type,data){
+    const padded=data.length+(data.length&1), out=new Uint8Array(8+padded), view=new DataView(out.buffer);
+    out.set(ascii4(type),0); view.setUint32(4,data.length,true); out.set(data,8); return out;
+  }
+  function parseWebpFrame(bytes){
+    if(String.fromCharCode(...bytes.slice(0,4))!=='RIFF'||String.fromCharCode(...bytes.slice(8,12))!=='WEBP') throw new Error('WebPフレームを読み取れませんでした');
+    const chunks=[]; let offset=12;
+    while(offset+8<=bytes.length){
+      const type=String.fromCharCode(...bytes.slice(offset,offset+4));
+      const length=new DataView(bytes.buffer,bytes.byteOffset+offset+4,4).getUint32(0,true);
+      if(type==='ALPH'||type==='VP8 '||type==='VP8L') chunks.push(bytes.slice(offset,offset+8+length+(length&1)));
+      offset+=8+length+(length&1);
+    }
+    if(!chunks.some(c=>{const t=String.fromCharCode(...c.slice(0,4));return t==='VP8 '||t==='VP8L';})) throw new Error('WebP画像データがありません');
+    return concatBytes(chunks);
+  }
+  function canvasToWebpBytes(canvas){
+    return new Promise((resolve,reject)=>canvas.toBlob(async blob=>{
+      if(!blob||blob.type!=='image/webp'){reject(new Error('このブラウザーはWebP書き出しに対応していません'));return;}
+      resolve(new Uint8Array(await blob.arrayBuffer()));
+    },'image/webp',1));
+  }
+  async function encodeAnimatedWebp(canvas,context,size,totalFrames,delayMs,fillColor){
+    const animationParts=[];
+    const animData=new Uint8Array(6); // transparent background + infinite loop
+    animationParts.push(webpChunk('ANIM',animData));
+    for(let i=0;i<totalFrames;i++){
+      draw(context,size,i/totalFrames,false,fillColor);
+      const framePayload=parseWebpFrame(await canvasToWebpBytes(canvas));
+      const header=new Uint8Array(16);
+      header.set(u24le(0),0); header.set(u24le(0),3);
+      header.set(u24le(size-1),6); header.set(u24le(size-1),9);
+      header.set(u24le(Math.max(1,Math.round(delayMs))),12);
+      header[15]=2; // full-canvas replacement: do not blend with the previous frame
+      animationParts.push(webpChunk('ANMF',concatBytes([header,framePayload])));
+      progressBar.style.width=Math.round(((i+1)/totalFrames)*100)+'%';
+      progressLabel.textContent=`WebPフレームを生成中… (${i+1}/${totalFrames})`;
+      if(i%2===0) await yieldToUI();
+    }
+    const vp8x=new Uint8Array(10); vp8x[0]=0x12; // animation + alpha
+    vp8x.set(u24le(size-1),4); vp8x.set(u24le(size-1),7);
+    const body=concatBytes([webpChunk('VP8X',vp8x),...animationParts]);
+    const riff=new Uint8Array(12); riff.set(ascii4('RIFF'),0); new DataView(riff.buffer).setUint32(4,4+body.length,true); riff.set(ascii4('WEBP'),8);
+    return new Blob([riff,body],{type:'image/webp'});
+  }
+
+  exportBtn.addEventListener('click', async () => {
+    if(!state.img) return;
+    exportBtn.disabled = true;
+    progressWrap.classList.add('show');
+    progressLabel.classList.add('show');
+    progressBar.style.width = '0%';
+    result.classList.remove('show');
+
+    try{
+      const size = state.outSize;
+      const totalFrames = Math.max(4, Math.round(state.fps * (state.cycleMs/1000)));
+      const delayCs = Math.max(2, Math.round(100/state.fps));
+      const format = outputFormat.value;
+
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = size; offCanvas.height = size;
+      const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+      const useTransparent = state.transparentBg;
+      const fillColor = useTransparent ? null : state.bgColor;
+
+      let blob;
+      if(format==='apng'){
+        blob=await encodeApng(offCanvas,offCtx,size,totalFrames,1000/state.fps,fillColor);
+      }else if(format==='webp'){
+        blob=await encodeAnimatedWebp(offCanvas,offCtx,size,totalFrames,1000/state.fps,fillColor);
+      }else{
+        const enc = new GifEncoder(size, size);
+        for(let i=0; i<totalFrames; i++){
+          const t = i/totalFrames;
+          draw(offCtx, size, t, false, fillColor);
+          const imgData = offCtx.getImageData(0, 0, size, size);
+          const indexedFrame = imageDataToIndexedFrame(imgData, useTransparent, gifPaletteMode.value);
+          enc.addFrame(indexedFrame.indices, indexedFrame.palette, delayCs, useTransparent ? TRANSPARENT_INDEX : null);
+          progressBar.style.width = Math.round(((i+1)/totalFrames)*100) + '%';
+          progressLabel.textContent = `GIFフレームを生成中… (${i+1}/${totalFrames})`;
+          if(i % 2 === 0) await yieldToUI();
+        }
+        blob=enc.finish();
+      }
+      if(currentResultUrl) URL.revokeObjectURL(currentResultUrl);
+      const url = URL.createObjectURL(blob);
+      currentResultUrl = url;
+      resultImg.src = url;
+      downloadLink.href = url;
+      let safeName = exportFileName.value.trim().replace(/[\\/:*?"<>|\u0000-\u001F]/g, '_');
+      const extension=format==='apng'?'.apng':format==='webp'?'.webp':'.gif';
+      if(!safeName) safeName = 'poyo-animation'+extension;
+      safeName=safeName.replace(/\.(?:gif|apng|png|webp)$/i,'');
+      safeName+=extension;
+      downloadLink.download = safeName;
+      result.classList.add('show');
+    } catch(err){
+      console.error(err);
+      alert('アニメーションの書き出し中にエラーが発生しました: ' + (err && err.message ? err.message : err));
+    } finally {
+      exportBtn.disabled = false;
+      progressWrap.classList.remove('show');
+      progressLabel.classList.remove('show');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
