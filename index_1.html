@@ -1523,5 +1523,36 @@ $('exportBtn').addEventListener('click', runExport);
 $('exportBtnTop').addEventListener('click', runExport);
 
 </script>
+  <script>
+(function () {
+  function sendHeight() {
+    const height = Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.offsetHeight
+    );
+
+    window.parent.postMessage({
+      type: 'gif-frame-bench-resize',
+      height: height
+    }, '*');
+  }
+
+  window.addEventListener('load', sendHeight);
+
+  if (typeof ResizeObserver !== 'undefined') {
+    const observer = new ResizeObserver(sendHeight);
+    observer.observe(document.body);
+    observer.observe(document.documentElement);
+  }
+
+  window.addEventListener('resize', sendHeight);
+
+  // GIF読み込みなどによる変化を念のため拾う
+  setTimeout(sendHeight, 100);
+  setTimeout(sendHeight, 500);
+})();
+</script>
 </body>
 </html>
